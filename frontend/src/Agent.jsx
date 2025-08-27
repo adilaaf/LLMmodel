@@ -1,3 +1,4 @@
+
 import React, { useMemo, useRef, useState } from "react";
 import {
   Brain,
@@ -11,19 +12,13 @@ import {
 } from "lucide-react";
 
 /**
- * Front-End Interface for Multi-LLM Collaborative Agent
- * - Submit a query
- * - Choose models (specialties)
- * - Watch collaboration timeline
- * - See initial + final outputs per model
- * - Give per-model feedback
- * - View synthesized final insight
- *
- * Endpoints (toggle Demo Mode to run without a backend):
- *   POST /api/run-agent   { query, models? }
- *     -> { models: [{ name, specialty, initial_output, final_output }...],
- *          synthesized_insight }
- *   POST /api/feedback    { model, feedback } -> { status: "ok" }
+ * Multi-LLM Collaborative Agent — Frontend
+ * Backend models:
+ *  - Model A: Math
+ *  - Model B: Science Dictionary (Wikipedia)
+ *  - Model C: Random Facts
+ *  - Model D: News (Google News RSS)
+ *  - Model E: Music (iTunes)
  */
 
 const API_BASE = "http://127.0.0.1:8000/api";
@@ -54,20 +49,37 @@ function mockRunAgent(query, chosen) {
     {
       name: "Model A",
       specialty: "Math",
-      initial_output: `Parsed the math parts of: ${query}`,
-      final_output: `Solved key equations and verified edge cases.`,
+      initial_output: `Parsed arithmetic expression: ${query}`,
+      final_output: `Computed result = ${/^\s*[\d ().+\-/*^%]+\s*$/.test(query) ? "…" : "Could not compute a numeric result."}`,
     },
     {
       name: "Model B",
-      specialty: "Science",
-      initial_output: `Highlighted scientific context for: ${query}`,
-      final_output: `Validated claims against known literature.`,
+      specialty: "Science Dictionary",
+      initial_output: `(Science) researched: ${query}`,
+      final_output:
+        `This would show a short Wikipedia summary for “${query}”.\n\nSource: Wikipedia`,
     },
     {
       name: "Model C",
-      specialty: "Reasoning",
-      initial_output: `Outlined reasoning plan for: ${query}`,
-      final_output: `Resolved conflicts and provided caveats.`,
+      specialty: "Random Facts",
+      initial_output: `Fetched a random fact.`,
+      final_output: `Bananas are berries, but strawberries are not.`,
+    },
+    {
+      name: "Model D",
+      specialty: "News",
+      initial_output:
+        `Top headlines:\n- Example Headline 1 (Example)\n  https://example.com/h1\n- Example Headline 2 (Example)\n  https://example.com/h2`,
+      final_output:
+        `Curated headlines:\n- Example Headline 1 (Example)\n  https://example.com/h1\n- Example Headline 2 (Example)\n  https://example.com/h2`,
+    },
+    {
+      name: "Model E",
+      specialty: "Music",
+      initial_output:
+        `Top tracks:\n- Song A — Artist A (Album A)\n  https://example.com/a\n- Song B — Artist B (Album B)\n  https://example.com/b`,
+      final_output:
+        `Playlist suggestion:\n- Song A — Artist A (Album A)\n  https://example.com/a\n- Song B — Artist B (Album B)\n  https://example.com/b`,
     },
   ];
   const models = (chosen?.length ? all.filter(m => chosen.includes(m.name)) : all).map(m => ({ ...m }));
@@ -75,9 +87,9 @@ function mockRunAgent(query, chosen) {
     setTimeout(() => {
       resolve({
         models,
-        synthesized_insight: `Final combined answer for: "${query}" — result reconciles math correctness, scientific context, and reasoning trade-offs.`,
+        synthesized_insight: `Final combined answer for: "${query}" — merged math, science, facts, news, and music.`,
       });
-    }, 1200);
+    }, 800);
   });
 }
 
@@ -85,7 +97,8 @@ function mockRunAgent(query, chosen) {
 const LS_SESSIONS_KEY = "mlca.sessions.v1";
 const LS_FEEDBACK_KEY = "mlca.feedback.v1";
 const loadFromLS = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
-const saveToLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const saveToLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } };
+
 
 // ------- Small atoms -------
 function Badge({ children }) {
@@ -119,6 +132,16 @@ function TimelineItem({ t, i }) {
   );
 }
 
+// Make URLs clickable in text blocks (for News/Music links)
+function renderWithLinks(text = "") {
+  const parts = text.split(/(https?:\/\/[^\s)]+)/g);
+  return parts.map((part, i) =>
+    /^https?:\/\//.test(part)
+      ? <a key={i} href={part} target="_blank" rel="noreferrer" className="text-slate-900 underline break-all">{part}</a>
+      : <span key={i}>{part}</span>
+  );
+}
+
 // =================== Main Component ===================
 export default function Agent() {
   // Initial state
@@ -126,8 +149,10 @@ export default function Agent() {
   const defaultModels = useMemo(
     () => [
       { name: "Model A", specialty: "Math" },
-      { name: "Model B", specialty: "Science" },
-      { name: "Model C", specialty: "Reasoning" }, // <-- You can remove or rename this
+      { name: "Model B", specialty: "Science Dictionary" },
+      { name: "Model C", specialty: "Random Facts" },
+      { name: "Model D", specialty: "News" },
+      { name: "Model E", specialty: "Music" },
     ],
     []
   );
@@ -142,6 +167,18 @@ export default function Agent() {
   const [sessions, setSessions] = useState(() => loadFromLS(LS_SESSIONS_KEY, []));
   const [feedbackHistory, setFeedbackHistory] = useState(() => loadFromLS(LS_FEEDBACK_KEY, []));
   const [submitting, setSubmitting] = useState({});
+  const clearSessions = () => {
+    setSessions([]);
+    try {
+      localStorage.removeItem(LS_SESSIONS_KEY); // ensure persistence is cleared
+    } catch { }
+  };
+  const clearFeedback = () => {
+    setFeedbackHistory([]);
+    try {
+      localStorage.removeItem(LS_FEEDBACK_KEY); // wipe persistence
+    } catch { }
+  };
 
   // Actions
   const runAgent = async () => {
@@ -250,9 +287,14 @@ export default function Agent() {
                 setTimeline([]);
                 setError("");
               }}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-lg 
+             bg-gradient-to-r from-slate-100 to-slate-200 
+             px-4 py-2 text-slate-700 font-medium shadow-sm 
+             hover:from-slate-200 hover:to-slate-300 
+             hover:shadow-md active:scale-95 transition-all"
             >
-              <RefreshCw className="w-4 h-4" /> Reset
+              <RefreshCw className="w-4 h-4 text-slate-600" />
+              <span>Reset</span>
             </button>
           </div>
         </div>
@@ -269,7 +311,7 @@ export default function Agent() {
             </div>
             <textarea
               className="w-full rounded-xl border border-slate-200 bg-white p-3 outline-none focus:ring-4 focus:ring-slate-200/80 min-h-[120px] transition-shadow"
-              placeholder='e.g., Compare the trade-offs of solar vs. wind power for a coastal city and provide a concise recommendation.'
+              placeholder='Try: "2+2", "atom", "openai", "taylor swift"'
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -280,11 +322,10 @@ export default function Agent() {
                   <button
                     key={m.name}
                     onClick={() => toggleModel(m.name)}
-                    className={`text-sm rounded-full border px-3 py-1.5 transition-colors ${
-                      selectedModels.includes(m.name)
-                        ? "bg-slate-900 text-white border-slate-900"
-                        : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
-                    }`}
+                    className={`text-sm rounded-full border px-3 py-1.5 transition-colors ${selectedModels.includes(m.name)
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
+                      }`}
                   >
                     {m.name} <span className="opacity-70">· {m.specialty}</span>
                   </button>
@@ -395,14 +436,14 @@ export default function Agent() {
 
                 <div className="mt-3 text-sm">
                   <div className="text-slate-500 font-medium mb-1">Initial Output</div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 whitespace-pre-wrap">
-                    {m.initial_output}
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 whitespace-pre-wrap break-words">
+                    {renderWithLinks(m.initial_output)}
                   </div>
                 </div>
                 <div className="mt-3 text-sm">
                   <div className="text-slate-500 font-medium mb-1">After Collaboration</div>
-                  <div className="rounded-lg border border-slate-200 bg-emerald-50/70 p-3 whitespace-pre-wrap">
-                    {m.final_output}
+                  <div className="rounded-lg border border-slate-200 bg-emerald-50/70 p-3 whitespace-pre-wrap break-words">
+                    {renderWithLinks(m.final_output)}
                   </div>
                 </div>
 
@@ -420,6 +461,16 @@ export default function Agent() {
             <div className="flex items-center gap-2 mb-3">
               <History className="w-5 h-5" />
               <h2 className="text-lg font-semibold tracking-tight">Session History</h2>
+              <button
+                onClick={clearSessions}
+                className="inline-flex items-center gap-2 rounded-lg 
+             bg-gradient-to-r from-slate-100 to-slate-200 
+             px-4 py-2 text-slate-700 font-medium shadow-sm 
+             hover:from-slate-200 hover:to-slate-300 
+             hover:shadow-md active:scale-95 transition-all"
+              >
+                Clear
+              </button>
             </div>
             {!sessions.length ? (
               <div className="text-sm text-slate-500">
@@ -454,6 +505,16 @@ export default function Agent() {
             <div className="flex items-center gap-2 mb-3">
               <MessageSquare className="w-5 h-5" />
               <h2 className="text-lg font-semibold tracking-tight">Feedback History</h2>
+              <button
+                onClick={clearFeedback}
+                className="inline-flex items-center gap-2 rounded-lg 
+             bg-gradient-to-r from-slate-100 to-slate-200 
+             px-4 py-2 text-slate-700 font-medium shadow-sm 
+             hover:from-slate-200 hover:to-slate-300 
+             hover:shadow-md active:scale-95 transition-all"
+              >
+                Clear
+              </button>
             </div>
             {!feedbackHistory.length ? (
               <div className="text-sm text-slate-500">Any feedback you submit will be listed here.</div>
@@ -475,12 +536,6 @@ export default function Agent() {
           </div>
         </aside>
       </main>
-
-      <footer className="mx-auto max-w-7xl px-4 pb-10 text-xs text-slate-500">
-        <div className="opacity-70">
-          Tip: toggle <strong>Demo Mode</strong> if you don't have a backend yet.
-        </div>
-      </footer>
     </div>
   );
 }
