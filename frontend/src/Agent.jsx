@@ -267,7 +267,7 @@ export default function Agent() {
   return (
     <div className="min-h-screen w-full bg-slate-50 text-slate-900 antialiased">
       <header className="sticky top-0 z-10 bg-gradient-to-r from-white to-slate-50/70 backdrop-blur border-b border-slate-200/70">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-2">
+        <div className="mx-auto w-full px-4 py-3 flex items-center gap-2">
           <Brain className="w-6 h-6" />
           <h1 className="text-2xl font-bold tracking-tight">Multi-LLM Collaborative Agent</h1>
           <div className="ml-auto flex items-center gap-4 text-sm">
@@ -300,7 +300,7 @@ export default function Agent() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <main className="mx-auto w-full px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column */}
         <section className="lg:col-span-2 space-y-6">
           {/* Query */}
