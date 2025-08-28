@@ -13,17 +13,17 @@ import {
 
 /**
  * Multi-LLM Collaborative Agent — Frontend
- * Backend models:
- *  - Model A: Math
- *  - Model B: Science Dictionary (Wikipedia)
- *  - Model C: Random Facts
- *  - Model D: News (Google News RSS)
- *  - Model E: Music (iTunes)
+  Backend models:
+  - Model A: Math
+  - Model B: Science Dictionary (Wikipedia)
+  - Model C: Random Facts
+  - Model D: News (Google News RSS)
+  - Model E: Music (iTunes)
  */
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
-// ------- Real API helpers -------
+// API helpers 
 async function runAgentAPI(query, selectedModels) {
   const res = await fetch(`${API_BASE}/run-agent`, {
     method: "POST",
@@ -43,7 +43,7 @@ async function sendFeedbackAPI(model, feedback) {
   return res.json();
 }
 
-// ------- Mock (Demo Mode) -------
+//  Mock- (Demo Mode)
 function mockRunAgent(query, chosen) {
   const all = [
     {
@@ -93,14 +93,14 @@ function mockRunAgent(query, chosen) {
   });
 }
 
-// ------- Local storage helpers -------
+// storage helpers
 const LS_SESSIONS_KEY = "mlca.sessions.v1";
 const LS_FEEDBACK_KEY = "mlca.feedback.v1";
 const loadFromLS = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 const saveToLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } };
 
 
-// ------- Small atoms -------
+// Atom facts
 function Badge({ children }) {
   return (
     <span className="inline-block rounded-full border border-slate-300 px-2 py-0.5 text-xs text-slate-700 bg-white/70">
@@ -132,7 +132,7 @@ function TimelineItem({ t, i }) {
   );
 }
 
-// Make URLs clickable in text blocks (for News/Music links)
+// URLs clickable for News and Music links
 function renderWithLinks(text = "") {
   const parts = text.split(/(https?:\/\/[^\s)]+)/g);
   return parts.map((part, i) =>
@@ -142,7 +142,7 @@ function renderWithLinks(text = "") {
   );
 }
 
-// =================== Main Component ===================
+// Main Component 
 export default function Agent() {
   // Initial state
   const [query, setQuery] = useState("");
@@ -263,7 +263,7 @@ export default function Agent() {
   const available = defaultModels;
   const chosenObjects = available.filter((m) => selectedModels.includes(m.name));
 
-  // ---------------- UI ----------------
+  // UX/UI
   return (
     <div className="min-h-screen w-full bg-slate-50 text-slate-900 antialiased">
       <header className="sticky top-0 z-10 bg-gradient-to-r from-white to-slate-50/70 backdrop-blur border-b border-slate-200/70">

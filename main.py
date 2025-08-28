@@ -22,9 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ===================== Helpers =====================
 
-# ---- Math (safe evaluator) ----
+# Math Components
 ops = {
     ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul, ast.Div: op.truediv,
     ast.USub: op.neg, ast.FloorDiv: op.floordiv, ast.Mod: op.mod, ast.Pow: op.pow,
@@ -49,7 +48,7 @@ def eval_math(expr: str):
         return None
 
 
-# ---- Science Dictionary (Wikipedia Summary) ----
+# Science Dictionary- Wikipedia Summary
 def wikipedia_summary(query: str) -> Optional[str]:
     slug = query.strip().replace(" ", "_")
     url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(slug)}"
@@ -71,7 +70,7 @@ def wikipedia_summary(query: str) -> Optional[str]:
         return None
 
 
-# ---- Random Facts (Useless Facts; fallback Numbers API) ----
+# Random Facts 
 def random_useless_fact() -> Optional[str]:
     try:
         r = requests.get(
@@ -95,7 +94,7 @@ def numbers_trivia(n: str = "random") -> Optional[str]:
     return None
 
 
-# ---- News (Google News RSS via feedparser) ----
+# News (Google News RSS via feedparser)
 def fetch_news(query: str, limit: int = 3):
     url = f"https://news.google.com/rss/search?q={quote(query)}&hl=en-US&gl=US&ceid=US:en"
     feed = feedparser.parse(url)
@@ -113,7 +112,7 @@ def fetch_news(query: str, limit: int = 3):
     return items
 
 
-# ---- Music (iTunes Search API) ----
+# Music (iTunes Search API) 
 def itunes_top_tracks(artist: str, limit: int = 5):
     try:
         url = "https://itunes.apple.com/search"
@@ -136,7 +135,7 @@ def itunes_top_tracks(artist: str, limit: int = 5):
     return []
 
 
-# ---- Tiny text helpers ----
+# Tiny text helpers 
 def first_sentence(text: str, max_len: int = 320) -> str:
     if not text:
         return ""
@@ -149,7 +148,7 @@ def first_sentence(text: str, max_len: int = 320) -> str:
     return candidate
 
 
-# ---- Context-aware fact for Random Facts model ----
+# Combine models fact for Random Facts model 
 def context_fact(query: str, selected_models: List[str]) -> Optional[str]:
     """
     If Music (Model E) is selected, try to get a fact about the artist.
@@ -176,7 +175,7 @@ def context_fact(query: str, selected_models: List[str]) -> Optional[str]:
     return random_useless_fact() or numbers_trivia("random")
 
 
-# ===================== Models =====================
+#  Models 
 POOL = [
     {"name": "Model A", "specialty": "Math"},
     {"name": "Model B", "specialty": "Science Dictionary"},
@@ -186,7 +185,7 @@ POOL = [
 ]
 
 
-# ===================== Schemas =====================
+# Schemas
 class RunAgentReq(BaseModel):
     query: str
     models: Optional[List[str]] = None
@@ -196,7 +195,7 @@ class FeedbackReq(BaseModel):
     feedback: str
 
 
-# ===================== Non-streaming =====================
+# Non-streaming 
 @app.post("/api/run-agent")
 def run_agent(body: RunAgentReq):
     chosen = [m.copy() for m in POOL if not body.models or m["name"] in body.models]
@@ -240,7 +239,7 @@ def run_agent(body: RunAgentReq):
     return {"models": chosen, "synthesized_insight": synthesized}
 
 
-# ===================== Streaming (SSE) =====================
+# Streaming (SSE)
 @app.get("/api/run-agent/stream")
 async def run_agent_stream(query: str, models: Optional[str] = None):
     selected = [s.strip() for s in (models or "").split(",") if s.strip()] or [m["name"] for m in POOL]
@@ -317,7 +316,7 @@ async def run_agent_stream(query: str, models: Optional[str] = None):
     return EventSourceResponse(sse_iterator())
 
 
-# ===================== Feedback =====================
+#  Feedback
 @app.post("/api/feedback")
 def feedback(body: FeedbackReq):
     print("Feedback:", body.model, body.feedback)
